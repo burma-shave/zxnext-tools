@@ -1,7 +1,5 @@
 package com.ericj.zxnexttools.tiled;
 
-import java.util.stream.Stream;
-
 public record TsxFileData(
         // parse out individual tiles and data
         String tilesetImageFilePath,
@@ -10,6 +8,5 @@ public record TsxFileData(
         int tileWidth,
         int tileHeight,
         int tileCount,
-        int columns
-) {
+        int columns) {
 }
