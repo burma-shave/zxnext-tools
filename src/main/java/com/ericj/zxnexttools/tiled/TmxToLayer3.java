@@ -138,7 +138,7 @@ public class TmxToLayer3 {
         Node dataNode = null;
         for (int i = 0; i < layerChildren.getLength(); i++) {
             Node node = layerChildren.item(i);
-            if (node.getNodeName() == "data") {
+            if (node.getNodeName().equals("data")) {
                 dataNode = node;
                 break;
             }
@@ -179,8 +179,7 @@ public class TmxToLayer3 {
     private static String[] normaliseCsvData(String csvData) {
         String trimmedCsvData = csvData.trim();
         String whiteSpaceRemoved = trimmedCsvData.replaceAll("\\s", "");
-        String[] stringValues = whiteSpaceRemoved.split(",");
-        return stringValues;
+        return whiteSpaceRemoved.split(",");
     }
 
     /**
@@ -194,7 +193,6 @@ public class TmxToLayer3 {
             throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilder builder =
                 DocumentBuilderFactory.newInstance().newDocumentBuilder();
-        Document tmxDocument = builder.parse(new File(filePath));
-        return tmxDocument;
+        return builder.parse(new File(filePath));
     }
 }
