@@ -6,12 +6,13 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.File;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -26,29 +27,34 @@ public class TmxToLayer3 {
             SAXException {
         // open tmx (xml) file
         // open tileset image (png)
-        String resourcesBasePath = "testdata/8x8_16colour";
         String tmxFileName = "deepforest.tmx";
-        String tmxFilePath = resourcesBasePath + File.separator + tmxFileName;
+//        String tmxFilePath = resourcesBasePath + File.separator + tmxFileName;
+        Path tmxFilePath = Path.of("testdata", "8x8_16colour", tmxFileName);
+
 
         TmxFileData tmxFileData = readTmxFileData(tmxFilePath);
-        TsxFileData tsxFileData = readTsxFileData(
-                resourcesBasePath + File.separator + tmxFileData.tsxFilePath());
+
+        System.out.println(tmxFileData);
+        TsxFileData tsxFileData = readTsxFileData(tmxFileData.tsxFilePath());
+        System.out.println(tsxFileData);
 
         // convert tsx to layer 3 tile data
 
-        createLayer3TileData(tsxFileData, "test.tiledata");
+        try (OutputStream tilesOut = Files.newOutputStream(
+                Path.of("foo.out"))) {
+            createLayer3TileData(tsxFileData, tilesOut);
+        }
     }
 
 
     private static void createLayer3TileData(TsxFileData tiles,
-                                             String outputPath)
+                                             OutputStream out)
             throws IOException {
         System.out.println(tiles);
+        BufferedImage tilesetImage =
+                ImageIO.read(tiles.tilesetImageFilePath().toFile());
 
-        InputStream tileSetInputStream =
-                Files.newInputStream(tiles.tilesetImageFilePath());
-
-
+        System.out.println(tilesetImage.getColorModel());
         // create tiledata stream
         // write to file
 
@@ -60,7 +66,7 @@ public class TmxToLayer3 {
      * @param tsxFilePath
      * @return
      */
-    private static TsxFileData readTsxFileData(String tsxFilePath) throws
+    private static TsxFileData readTsxFileData(Path tsxFilePath) throws
             ParserConfigurationException,
             IOException,
             SAXException,
@@ -91,8 +97,9 @@ public class TmxToLayer3 {
         int tilesetImageWidth = readIntAttribute(imageElement, "width");
         int tilesetImageHeight = readIntAttribute(imageElement, "height");
         String tilesetSource = readStringAttribute(imageElement, "source");
+        Path tileSetImagePath = tsxFilePath.resolveSibling(tilesetSource);
 
-        return new TsxFileData(Path.of(tilesetSource), tilesetImageWidth,
+        return new TsxFileData(tileSetImagePath, tilesetImageWidth,
                                tilesetImageHeight, tileWidth, tileHeight,
                                tileCount, columns);
     }
@@ -135,7 +142,7 @@ public class TmxToLayer3 {
         return attributeValue;
     }
 
-    private static TmxFileData readTmxFileData(String tmxFilePath) throws
+    private static TmxFileData readTmxFileData(Path tmxFilePath) throws
             ParserConfigurationException,
             IOException,
             SAXException,
@@ -191,7 +198,9 @@ public class TmxToLayer3 {
 
         String tilesetPath = sourceAttribute.getTextContent();
 
-        return new TmxFileData(tilesetPath, tileMapIds);
+        Path pathOfTsxFile = tmxFilePath.resolveSibling(tilesetPath);
+
+        return new TmxFileData(pathOfTsxFile, tileMapIds);
     }
 
     private static String[] normaliseCsvData(String csvData) {
@@ -207,10 +216,10 @@ public class TmxToLayer3 {
      * @return The document representation of the contents of the xml file
      * @throws TmxException
      */
-    public static Document openXmlFile(String filePath)
+    public static Document openXmlFile(Path filePath)
             throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilder builder =
                 DocumentBuilderFactory.newInstance().newDocumentBuilder();
-        return builder.parse(new File(filePath));
+        return builder.parse(filePath.toFile());
     }
 }
