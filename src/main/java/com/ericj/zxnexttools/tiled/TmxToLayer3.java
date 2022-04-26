@@ -11,6 +11,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
@@ -31,9 +34,24 @@ public class TmxToLayer3 {
         TsxFileData tsxFileData = readTsxFileData(
                 resourcesBasePath + File.separator + tmxFileData.tsxFilePath());
 
-        System.out.println(tsxFileData);
-        System.out.println(tmxFileData);
-        System.out.println(tsxFileData);
+        // convert tsx to layer 3 tile data
+
+        createLayer3TileData(tsxFileData, "test.tiledata");
+    }
+
+
+    private static void createLayer3TileData(TsxFileData tiles,
+                                             String outputPath)
+            throws IOException {
+        System.out.println(tiles);
+
+        InputStream tileSetInputStream =
+                Files.newInputStream(tiles.tilesetImageFilePath());
+
+
+        // create tiledata stream
+        // write to file
+
     }
 
     /**
@@ -74,7 +92,7 @@ public class TmxToLayer3 {
         int tilesetImageHeight = readIntAttribute(imageElement, "height");
         String tilesetSource = readStringAttribute(imageElement, "source");
 
-        return new TsxFileData(tilesetSource, tilesetImageWidth,
+        return new TsxFileData(Path.of(tilesetSource), tilesetImageWidth,
                                tilesetImageHeight, tileWidth, tileHeight,
                                tileCount, columns);
     }

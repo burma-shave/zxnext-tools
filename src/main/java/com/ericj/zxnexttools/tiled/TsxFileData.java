@@ -1,8 +1,10 @@
 package com.ericj.zxnexttools.tiled;
 
+import java.nio.file.Path;
+
 public record TsxFileData(
         // parse out individual tiles and data
-        String tilesetImageFilePath,
+        Path tilesetImageFilePath,
         int tilesetImageWidth,
         int tilesetImageHeight,
         int tileWidth,
