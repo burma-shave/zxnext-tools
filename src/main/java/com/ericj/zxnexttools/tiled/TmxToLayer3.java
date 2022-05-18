@@ -11,11 +11,14 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.IndexColorModel;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class TmxToLayer3 {
@@ -24,7 +27,9 @@ public class TmxToLayer3 {
             TmxException,
             ParserConfigurationException,
             IOException,
-            SAXException {
+            SAXException,
+            TilesetIsNotIndexedColourException,
+            TilesetIsNot8BitsPerixelException {
         // open tmx (xml) file
         // open tileset image (png)
         String tmxFileName = "deepforest.tmx";
@@ -48,14 +53,34 @@ public class TmxToLayer3 {
 
 
     private static void createLayer3TileData(TsxFileData tiles,
-                                             OutputStream out)
-            throws IOException {
-        System.out.println(tiles);
+                                             OutputStream out) throws
+            IOException,
+            TilesetIsNotIndexedColourException,
+            TilesetIsNot8BitsPerixelException {
         BufferedImage tilesetImage =
                 ImageIO.read(tiles.tilesetImageFilePath().toFile());
 
-        System.out.println(tilesetImage.getColorModel());
-        // create tiledata stream
+        ColorModel colorModel = tilesetImage.getColorModel();
+
+        boolean is8BitsPerPixel = colorModel.getPixelSize() == 8;
+        boolean isIndexedColour = colorModel instanceof IndexColorModel;
+
+        if (!isIndexedColour)
+            throw new TilesetIsNotIndexedColourException();
+
+        if (!is8BitsPerPixel)
+            throw new TilesetIsNot8BitsPerixelException();
+
+        IntStream tileIds = IntStream.range(0, tiles.tileCount());
+        tileIds.map(id -> 2 * id);
+
+        
+        // todo: create tiledata stream
+        // time dimension is fixed at 8x8
+        // get number of tiles
+        // get width
+        // get rectangular area of data
+
         // write to file
 
     }
