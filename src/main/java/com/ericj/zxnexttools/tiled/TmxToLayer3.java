@@ -10,9 +10,8 @@ import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.IndexColorModel;
+import java.awt.*;
+import java.awt.image.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -73,8 +72,11 @@ public class TmxToLayer3 {
 
         IntStream tileIds = IntStream.range(0, tiles.tileCount());
         tileIds.map(id -> 2 * id);
+        SampleModel sampleModel = tilesetImage.getSampleModel();
+        Raster tileRaster = tilesetImage.getData(new Rectangle(0, 0, 8, 8));
+        int sample = tileRaster.getSample(0, 0, 0);
+        System.out.println(sampleModel);
 
-        
         // todo: create tiledata stream
         // time dimension is fixed at 8x8
         // get number of tiles
