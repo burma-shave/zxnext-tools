@@ -6,19 +6,15 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.awt.*;
-import java.awt.image.*;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public class TmxToLayer3 {
 
@@ -29,62 +25,57 @@ public class TmxToLayer3 {
             SAXException,
             TilesetIsNotIndexedColourException,
             TilesetIsNot8BitsPerixelException {
-        // open tmx (xml) file
-        // open tileset image (png)
-        String tmxFileName = "deepforest.tmx";
-//        String tmxFilePath = resourcesBasePath + File.separator + tmxFileName;
-        Path tmxFilePath = Path.of("testdata", "8x8_16colour", tmxFileName);
+
+//        String mapProject = "mtrd_tileset_4bit_rrrgggbb";
+
+        Path tmxFilePath = Path.of(args[0]);
+
+        Path outDir = Path.of(args[1]);
 
 
+//        String mapProject = "simple";
+//        Path tmxFilePath = Path.of("testdata", mapProject, mapProject + ".tmx");
+//
+//
         TmxFileData tmxFileData = readTmxFileData(tmxFilePath);
 
-        System.out.println(tmxFileData);
         TsxFileData tsxFileData = readTsxFileData(tmxFileData.tsxFilePath());
-        System.out.println(tsxFileData);
 
-        // convert tsx to layer 3 tile data
+        Layer3TileData layer3TileData =
+                Layer3TileDataCreator.getLayer3TileData(tmxFileData,
+                                                        tsxFileData);
 
-        try (OutputStream tilesOut = Files.newOutputStream(
-                Path.of("foo.out"))) {
-            createLayer3TileData(tsxFileData, tilesOut);
-        }
+        createLayer3TileData(layer3TileData, outDir);
     }
 
 
-    private static void createLayer3TileData(TsxFileData tiles,
-                                             OutputStream out) throws
+    private static void createLayer3TileData(Layer3TileData tileData,
+                                             Path outdir) throws
             IOException,
             TilesetIsNotIndexedColourException,
             TilesetIsNot8BitsPerixelException {
-        BufferedImage tilesetImage =
-                ImageIO.read(tiles.tilesetImageFilePath().toFile());
 
-        ColorModel colorModel = tilesetImage.getColorModel();
+        Path tilesOutPath = outdir.resolve("tiles.bin");
+        Path paletteOutPath = outdir.resolve("palette.bin");
+        Path mapOutPath = outdir.resolve("map.bin");
+        Files.write(tilesOutPath, tileData.tiles());
+        Files.write(paletteOutPath, tileData.palette());
+        byte[][] tileMapRows = tileData.tileMapRowMajorOrder();
 
-        boolean is8BitsPerPixel = colorModel.getPixelSize() == 8;
-        boolean isIndexedColour = colorModel instanceof IndexColorModel;
+        ByteBuffer tileMapBuffer =
+                ByteBuffer.allocate(tileMapRows.length * tileMapRows[0].length);
 
-        if (!isIndexedColour)
-            throw new TilesetIsNotIndexedColourException();
+        for (int i = 0; i < tileMapRows.length; i++) {
+            tileMapBuffer.put(tileMapRows[i][1]);
+            tileMapBuffer.put(tileMapRows[i][0]);
+        }
 
-        if (!is8BitsPerPixel)
-            throw new TilesetIsNot8BitsPerixelException();
-
-        IntStream tileIds = IntStream.range(0, tiles.tileCount());
-        tileIds.map(id -> 2 * id);
-        SampleModel sampleModel = tilesetImage.getSampleModel();
-        Raster tileRaster = tilesetImage.getData(new Rectangle(0, 0, 8, 8));
-        int sample = tileRaster.getSample(0, 0, 0);
-        System.out.println(sampleModel);
-
-        // todo: create tiledata stream
-        // time dimension is fixed at 8x8
-        // get number of tiles
-        // get width
-        // get rectangular area of data
-
-        // write to file
-
+//        ByteBuffer tileMapBuffer = ByteBuffer.allocate(tileMapRows.length);
+//
+//        for (int i = 0; i < tileMapRows.length; i++) {
+//            tileMapBuffer.put(tileMapRows[i][1]);
+//        }
+        Files.write(mapOutPath, tileMapBuffer.array());
     }
 
     /**
@@ -202,11 +193,21 @@ public class TmxToLayer3 {
                     tmxDocument.getDocumentURI());
         }
 
+        Node widthInTilesNode =
+                layerElement.getAttributes().getNamedItem("width");
+        Node heightInTilesNode =
+                layerElement.getAttributes().getNamedItem("height");
+
+        int widthInTiles = Integer.parseInt(widthInTilesNode.getTextContent());
+        int heightInTiles =
+                Integer.parseInt(heightInTilesNode.getTextContent());
+
 
         String csvData = dataNode.getTextContent();
         String[] stringValues = normaliseCsvData(csvData);
-        Stream<Integer> tileMapIds =
-                Arrays.stream(stringValues).map(Integer::parseInt);
+        IntStream tileMapIds =
+                Arrays.stream(stringValues).mapToInt(Integer::parseInt);
+
 
         NodeList tilesetElements = tmxDocument.getElementsByTagName("tileset");
         if (!(tilesetElements.getLength() == 1)) {
@@ -227,7 +228,8 @@ public class TmxToLayer3 {
 
         Path pathOfTsxFile = tmxFilePath.resolveSibling(tilesetPath);
 
-        return new TmxFileData(pathOfTsxFile, tileMapIds);
+        return new TmxFileData(pathOfTsxFile, tileMapIds.toArray(),
+                               widthInTiles, heightInTiles);
     }
 
     private static String[] normaliseCsvData(String csvData) {
@@ -250,3 +252,4 @@ public class TmxToLayer3 {
         return builder.parse(filePath.toFile());
     }
 }
+// TODO: output a simple tilemap - one screen, no offsets

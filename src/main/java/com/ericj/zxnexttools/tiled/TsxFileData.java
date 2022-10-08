@@ -11,4 +11,5 @@ public record TsxFileData(
         int tileHeight,
         int tileCount,
         int columns) {
+
 }
